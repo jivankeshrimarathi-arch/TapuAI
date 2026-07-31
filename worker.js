@@ -1,21 +1,3 @@
-/**
- * TapuAI backend proxy — Cloudflare Worker
- *
- * हे तुमची Anthropic API key सर्व्हरवर लपवून ठेवतं, त्यामुळे users ला स्वतःची
- * key लागत नाही. रोजची मर्यादा (DAILY_LIMIT) टाकून bill अनियंत्रित होण्यापासून
- * वाचवलंय — गरज असल्यास वाढवा/कमी करा.
- *
- * Setup (एकदाच):
- *   1. https://dash.cloudflare.com → Workers & Pages → Create Worker
- *   2. हा कोड paste करा, Deploy करा
- *   3. Worker च्या Settings → Variables मध्ये जाऊन:
- *        ANTHROPIC_API_KEY = तुमची खरी key (Encrypt करा)
- *   4. Settings → Bindings → KV Namespace जोडा, नाव: TAPUAI_LIMITS
- *   5. Settings → Variables मध्ये ALLOWED_ORIGIN = तुमच्या GitHub Pages URL
- *      (उदा. https://username.github.io)
- *   6. Worker ची URL (उदा. https://tapuai.yourname.workers.dev) कॉपी करा आणि
- *      app.js मधल्या WORKER_ENDPOINT मध्ये टाका.
- */
 
 const DAILY_LIMIT = 30; // प्रत्येक user ला दिवसाला किती मेसेज (IP आधारित)
 const MAX_TOKENS = 1000;
