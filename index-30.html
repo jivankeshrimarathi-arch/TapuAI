@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TapuAI — तुमचा त्रिभाषिक AI सोबती</title>
+<meta name="description" content="TapuAI by Prasad Technology Pvt Ltd — Marathi, Hindi आणि English मध्ये बोलणारा AI chatbot.">
+<meta name="theme-color" content="#14162B">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="brand">
+        <span class="brand-mark" id="brandMark" aria-hidden="true">
+          <span class="mark-devanagari">टपु</span><span class="mark-latin">AI</span>
+        </span>
+      </div>
+      <button class="icon-btn sidebar-close" id="sidebarClose" aria-label="Close menu">✕</button>
+    </div>
+
+    <button class="new-chat-btn" id="newChatBtn">
+      <span class="plus">+</span> <span data-i18n="newChat">नवीन संभाषण</span>
+    </button>
+
+    <div class="conv-list" id="convList" role="list"></div>
+
+    <div class="sidebar-bottom">
+      <button class="side-action" id="openSettings">
+        <span class="side-ico">⚙</span> <span data-i18n="settings">सेटिंग्स</span>
+      </button>
+      <div class="brand-footer">
+        <span data-i18n="madeBy">निर्माता</span>: Prasad Technology Pvt Ltd
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+
+      <div class="topbar-title">
+        <span class="topbar-name">TapuAI</span>
+        <span class="topbar-sub" id="modelBadge">2026 knowledge · <span id="searchState" data-i18n="searchOff">वेब शोध बंद</span></span>
+      </div>
+
+      <div class="lang-switch" id="langSwitch" role="tablist" aria-label="Language">
+        <button class="lang-btn active" data-lang="mr" role="tab" aria-selected="true">मराठी</button>
+        <button class="lang-btn" data-lang="hi" role="tab" aria-selected="false">हिंदी</button>
+        <button class="lang-btn" data-lang="en" role="tab" aria-selected="false">EN</button>
+      </div>
+    </header>
+
+    <section class="chat-area" id="chatArea">
+      <div class="empty-state" id="emptyState">
+        <div class="hero-mark" aria-hidden="true">
+          <span class="hero-ring ring-1"></span>
+          <span class="hero-ring ring-2"></span>
+          <span class="hero-dot"></span>
+        </div>
+        <h1 class="hero-greet" id="heroGreet">नमस्कार, मी TapuAI!</h1>
+        <p class="hero-sub" data-i18n="heroSub">मराठी, हिंदी किंवा इंग्रजी — तुम्हाला हवं त्या भाषेत बोला. मी ऐकतोय.</p>
+
+        <div class="suggestion-grid" id="suggestionGrid"></div>
+      </div>
+
+      <div class="messages" id="messages"></div>
+    </section>
+
+    <form class="composer" id="composerForm">
+      <div class="composer-inner">
+        <button type="button" class="tool-toggle" id="webSearchToggle" aria-pressed="false" title="Web search">
+          <span class="tool-ico">🔎</span>
+          <span class="tool-label" data-i18n="webSearch">वेब शोध</span>
+        </button>
+        <textarea id="promptInput" class="prompt-input" rows="1" data-i18n-placeholder="placeholder" placeholder="TapuAI ला काहीही विचारा…"></textarea>
+        <button type="submit" class="send-btn" id="sendBtn" aria-label="Send">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M4 12L20 4L13 20L11 13L4 12Z" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <p class="composer-hint" data-i18n="composerHint">TapuAI चुका करू शकतो. महत्त्वाची माहिती नेहमी पडताळून पहा.</p>
+    </form>
+  </main>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-head">
+      <h2 id="settingsTitle" data-i18n="settingsTitle">सेटिंग्स</h2>
+      <button class="icon-btn" id="closeSettings" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <p class="field-note hidden" id="proxyModeNote" data-i18n="proxyNote">TapuAI इथे मोफत सर्व्हरमार्फत चालतंय — तुम्हाला कुठलीही API key टाकायची गरज नाही. गैरवापर टाळण्यासाठी दिवसाला मेसेजची एक मर्यादा आहे.</p>
+
+      <div id="manualKeyFields">
+        <label class="field-label" data-i18n="providerLabel">AI Provider</label>
+        <select id="providerSelect" class="field-input">
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="openai">OpenAI-compatible endpoint</option>
+        </select>
+
+        <label class="field-label" data-i18n="apiKeyLabel">API Key</label>
+        <input type="password" id="apiKeyInput" class="field-input" placeholder="sk-..." autocomplete="off">
+
+        <div id="openaiExtra" class="hidden">
+          <label class="field-label">Base URL</label>
+          <input type="text" id="baseUrlInput" class="field-input" placeholder="https://api.openai.com/v1">
+          <label class="field-label">Model</label>
+          <input type="text" id="modelInput" class="field-input" placeholder="gpt-4o-mini">
+        </div>
+
+        <p class="field-note" data-i18n="keyNote">तुमची API key फक्त तुमच्या ब्राउझरमध्ये (localStorage) साठवली जाते — कुठल्याही सर्व्हरवर पाठवली जात नाही. हे static GitHub Pages app असल्यामुळे प्रत्येक user ला स्वतःची key लागते.</p>
+
+        <button class="save-btn" id="saveSettings" data-i18n="save">जतन करा</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

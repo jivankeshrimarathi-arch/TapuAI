@@ -23,7 +23,7 @@ const I18N = {
     settingsTitle: "सेटिंग्स",
     providerLabel: "AI Provider",
     apiKeyLabel: "API Key",
-    keyNote: "तुमची API key फक्त तुमच्या ब्राउझरमध्ये (localStorage) साठवली जाते — कुठल्याही सर्व्हरवर पाठवली जात नाही. हे static GitHub Pages app असल्यामुळे प्रत्येक user ला स्वतःची key लागते.",
+    keyNote: "Key ऐच्छिक आहे. Key न टाकल्यास TapuAI मोफत Wikipedia शोधाद्वारे उत्तर देईल. जास्त हुशार, संभाषणात्मक उत्तरं हवी असतील तरच इथे स्वतःची Anthropic/OpenAI key टाका — ती फक्त तुमच्या ब्राउझरमध्ये (localStorage) साठवली जाते.",
     save: "जतन करा",
     greetCycle: ["नमस्कार, मी TapuAI!", "बोला, काय मदत करू?", "आजचा दिवस कसा आहे?"],
     suggestions: [
@@ -37,7 +37,9 @@ const I18N = {
     errorPrefix: "काहीतरी चूक झाली",
     you: "तुम्ही",
     searching: "वेबवर शोधतोय…",
-    proxyNote: "TapuAI इथे मोफत सर्व्हरमार्फत चालतंय — तुम्हाला कुठलीही API key टाकायची गरज नाही. गैरवापर टाळण्यासाठी दिवसाला मेसेजची एक मर्यादा आहे."
+    proxyNote: "TapuAI इथे मोफत सर्व्हरमार्फत चालतंय — तुम्हाला कुठलीही API key टाकायची गरज नाही. गैरवापर टाळण्यासाठी दिवसाला मेसेजची एक मर्यादा आहे.",
+    noFreeResult: "यावर मला Wikipedia वर काही सापडलं नाही. जरा वेगळ्या शब्दांत विचारून बघा, किंवा खालच्या Google link वर तपासा.",
+    freeModeBadge: "मोफत Wikipedia शोध (key नाही)"
   },
   hi: {
     newChat: "नई बातचीत",
@@ -52,7 +54,7 @@ const I18N = {
     settingsTitle: "सेटिंग्स",
     providerLabel: "AI Provider",
     apiKeyLabel: "API Key",
-    keyNote: "आपकी API key केवल आपके ब्राउज़र (localStorage) में सेव होती है — किसी सर्वर पर नहीं भेजी जाती। यह static GitHub Pages app है इसलिए हर user को अपनी key चाहिए।",
+    keyNote: "Key वैकल्पिक है। बिना key के TapuAI मुफ़्त Wikipedia खोज से जवाब देगा। ज़्यादा समझदार, बातचीत जैसे जवाब चाहिए तो ही यहां अपनी Anthropic/OpenAI key डालें — यह सिर्फ़ आपके ब्राउज़र (localStorage) में सेव होती है।",
     save: "सेव करें",
     greetCycle: ["नमस्ते, मैं TapuAI हूँ!", "बोलिए, क्या मदद करूं?", "आज का दिन कैसा है?"],
     suggestions: [
@@ -66,7 +68,9 @@ const I18N = {
     errorPrefix: "कुछ गड़बड़ हुई",
     you: "आप",
     searching: "वेब पर खोज रहा हूँ…",
-    proxyNote: "TapuAI यहां एक मुफ़्त सर्वर के ज़रिए चल रहा है — आपको कोई API key डालने की ज़रूरत नहीं। दुरुपयोग रोकने के लिए रोज़ाना एक संदेश सीमा है।"
+    proxyNote: "TapuAI यहां एक मुफ़्त सर्वर के ज़रिए चल रहा है — आपको कोई API key डालने की ज़रूरत नहीं। दुरुपयोग रोकने के लिए रोज़ाना एक संदेश सीमा है।",
+    noFreeResult: "इस पर मुझे Wikipedia पर कुछ नहीं मिला। कृपया अलग शब्दों में पूछें, या नीचे दिए Google link पर देखें।",
+    freeModeBadge: "मुफ़्त Wikipedia खोज (key नहीं)"
   },
   en: {
     newChat: "New chat",
@@ -81,7 +85,7 @@ const I18N = {
     settingsTitle: "Settings",
     providerLabel: "AI Provider",
     apiKeyLabel: "API Key",
-    keyNote: "Your API key is stored only in your browser (localStorage) — never sent to any server. Since this is a static GitHub Pages app, each user needs their own key.",
+    keyNote: "The key is optional. Without one, TapuAI answers using free Wikipedia search. Only add your own Anthropic/OpenAI key here if you want smarter, conversational answers — it's stored only in your browser (localStorage).",
     save: "Save",
     greetCycle: ["Hi, I'm TapuAI!", "What can I help with?", "How's your day going?"],
     suggestions: [
@@ -95,13 +99,31 @@ const I18N = {
     errorPrefix: "Something went wrong",
     you: "You",
     searching: "Searching the web…",
-    proxyNote: "TapuAI is running through a free shared server here — you don't need to add any API key. There's a daily message limit per person to prevent abuse."
+    proxyNote: "TapuAI is running through a free shared server here — you don't need to add any API key. There's a daily message limit per person to prevent abuse.",
+    noFreeResult: "I couldn't find anything on Wikipedia for that. Try different words, or check the Google link below.",
+    freeModeBadge: "Free Wikipedia search (no key)"
   }
 };
 
 let lang = localStorage.getItem("tapuai_lang") || "mr";
 
 function t(key){ return (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key; }
+
+function updateModeUI(){
+  const settings = currentSettings();
+  const usingWorker = !!WORKER_ENDPOINT;
+  const usingAiKey = !usingWorker && settings.key;
+  const badge = document.getElementById("searchState");
+  const toggle = els.webSearchToggle;
+  if (usingWorker || usingAiKey){
+    badge.textContent = webSearchOn ? t("searchOn") : t("searchOff");
+    toggle.style.display = "";
+    toggle.disabled = false;
+  } else {
+    badge.textContent = t("freeModeBadge");
+    toggle.style.display = "none"; // free mode always searches — toggle is redundant
+  }
+}
 
 function applyI18n(){
   document.documentElement.lang = lang;
@@ -112,6 +134,7 @@ function applyI18n(){
     el.placeholder = t(el.dataset.i18nPlaceholder);
   });
   document.getElementById("searchState").textContent = webSearchOn ? t("searchOn") : t("searchOff");
+  updateModeUI();
   renderSuggestions();
   cycleGreeting(true);
 }
@@ -412,6 +435,45 @@ async function callViaWorker(messages, useSearch){
   return { text: data.reply || "", sources: data.sources || [] };
 }
 
+// ---------------- Free, keyless web search (no API key needed) ----------------
+// Uses Wikipedia's public search API (free, no key, CORS-enabled via origin=*).
+// This is the default mode when the user hasn't added any AI key / worker.
+function wikiHost(){
+  return { mr: "mr.wikipedia.org", hi: "hi.wikipedia.org", en: "en.wikipedia.org" }[lang] || "en.wikipedia.org";
+}
+
+async function performFreeSearch(query){
+  const host = wikiHost();
+  const searchUrl = `https://${host}/w/api.php?action=query&format=json&origin=*&list=search&srlimit=3&srsearch=${encodeURIComponent(query)}`;
+  const searchRes = await fetch(searchUrl);
+  const searchData = await searchRes.json();
+  const results = searchData?.query?.search || [];
+
+  if (results.length === 0){
+    const gUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    return {
+      text: t("noFreeResult"),
+      sources: [{ title: "Google Search", url: gUrl }]
+    };
+  }
+
+  const top = results[0];
+  const extractUrl = `https://${host}/w/api.php?action=query&format=json&origin=*&prop=extracts&exintro=true&explaintext=true&pageids=${top.pageid}`;
+  const extractRes = await fetch(extractUrl);
+  const extractData = await extractRes.json();
+  const page = extractData?.query?.pages?.[top.pageid];
+  let extract = (page?.extract || "").trim();
+  if (extract.length > 1200) extract = extract.slice(0, 1200).trim() + "…";
+  if (!extract) extract = (top.snippet || "").replace(/<[^>]+>/g, "");
+
+  const sources = results.slice(0, 3).map(r => ({
+    title: r.title,
+    url: `https://${host}/wiki/${encodeURIComponent(r.title.replace(/ /g, "_"))}`
+  }));
+
+  return { text: extract || t("noFreeResult"), sources };
+}
+
 async function callOpenAICompatible(messages, key, baseUrl, model){
   const res = await fetch(`${baseUrl.replace(/\/$/,"")}/chat/completions`, {
     method: "POST",
@@ -442,10 +504,7 @@ async function handleSend(e){
 
   const settings = currentSettings();
   const usingWorker = !!WORKER_ENDPOINT;
-  if (!usingWorker && !settings.key){
-    els.settingsOverlay.classList.add("open");
-    return;
-  }
+  const usingAiKey = !usingWorker && settings.key;
 
   let conv = getActive();
   if (!conv){ newConversation(); conv = getActive(); }
@@ -473,11 +532,14 @@ async function handleSend(e){
     if (usingWorker){
       result = await callViaWorker(conv.messages, webSearchOn);
       usedSearch = webSearchOn;
-    } else if (settings.provider === "anthropic"){
+    } else if (usingAiKey && settings.provider === "anthropic"){
       result = await callAnthropic(conv.messages, settings.key, webSearchOn);
       usedSearch = webSearchOn;
-    } else {
+    } else if (usingAiKey){
       result = await callOpenAICompatible(conv.messages, settings.key, settings.baseUrl, settings.model);
+    } else {
+      result = await performFreeSearch(text);
+      usedSearch = true;
     }
     conv.messages.push({ role: "assistant", content: result.text || "…", usedSearch, sources: result.sources || [] });
   } catch(err){
@@ -544,6 +606,7 @@ els.saveSettings.addEventListener("click", ()=>{
   localStorage.setItem("tapuai_baseurl", els.baseUrlInput.value.trim());
   localStorage.setItem("tapuai_model", els.modelInput.value.trim());
   els.settingsOverlay.classList.remove("open");
+  updateModeUI();
 });
 
 // ---------------- Init ----------------
