@@ -1,6 +1,12 @@
 /* TapuAI — by Prasad Technology Pvt Ltd
-   Static PWA chat client. Brings its own API key (Anthropic or OpenAI-compatible).
+   Static PWA chat client. Brings its own API key (Anthropic or OpenAI-compatible),
+   OR — if you deploy the included Cloudflare Worker — users need NO key at all.
 */
+
+// Paste your deployed Cloudflare Worker URL here (see worker/worker.js).
+// Example: "https://tapuai.yourname.workers.dev"
+// Leave empty ("") to keep the manual "bring your own key" flow.
+const WORKER_ENDPOINT = "";
 
 // ---------------- i18n ----------------
 const I18N = {
@@ -30,7 +36,8 @@ const I18N = {
     thinking: "विचार करतोय…",
     errorPrefix: "काहीतरी चूक झाली",
     you: "तुम्ही",
-    searching: "वेबवर शोधतोय…"
+    searching: "वेबवर शोधतोय…",
+    proxyNote: "TapuAI इथे मोफत सर्व्हरमार्फत चालतंय — तुम्हाला कुठलीही API key टाकायची गरज नाही. गैरवापर टाळण्यासाठी दिवसाला मेसेजची एक मर्यादा आहे."
   },
   hi: {
     newChat: "नई बातचीत",
@@ -58,7 +65,8 @@ const I18N = {
     thinking: "सोच रहा हूँ…",
     errorPrefix: "कुछ गड़बड़ हुई",
     you: "आप",
-    searching: "वेब पर खोज रहा हूँ…"
+    searching: "वेब पर खोज रहा हूँ…",
+    proxyNote: "TapuAI यहां एक मुफ़्त सर्वर के ज़रिए चल रहा है — आपको कोई API key डालने की ज़रूरत नहीं। दुरुपयोग रोकने के लिए रोज़ाना एक संदेश सीमा है।"
   },
   en: {
     newChat: "New chat",
@@ -86,7 +94,8 @@ const I18N = {
     thinking: "Thinking…",
     errorPrefix: "Something went wrong",
     you: "You",
-    searching: "Searching the web…"
+    searching: "Searching the web…",
+    proxyNote: "TapuAI is running through a free shared server here — you don't need to add any API key. There's a daily message limit per person to prevent abuse."
   }
 };
 
@@ -110,7 +119,7 @@ function applyI18n(){
 // ---------------- State ----------------
 let conversations = JSON.parse(localStorage.getItem("tapuai_convs") || "[]");
 let activeId = null;
-let webSearchOn = false;
+let webSearchOn = true;
 let sending = false;
 
 const els = {
@@ -239,6 +248,23 @@ function buildMsgEl(m){
   const textDiv = document.createElement("div");
   textDiv.innerHTML = renderMarkdown(m.content || "");
   content.appendChild(textDiv);
+  if (m.sources && m.sources.length){
+    const srcWrap = document.createElement("div");
+    srcWrap.className = "sources-wrap";
+    m.sources.forEach(s=>{
+      const a = document.createElement("a");
+      a.className = "source-chip";
+      a.href = s.url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      let host = s.url;
+      try { host = new URL(s.url).hostname.replace(/^www\./,""); } catch(e){}
+      a.textContent = "🔗 " + host;
+      a.title = s.title || s.url;
+      srcWrap.appendChild(a);
+    });
+    content.appendChild(srcWrap);
+  }
   body.append(roleLbl, content);
   wrap.append(av, body);
   return wrap;
@@ -283,6 +309,16 @@ function closeSidebarMobile(){
 
 // ---------------- Settings ----------------
 function loadSettings(){
+  const manualFields = document.getElementById("manualKeyFields");
+  const proxyNote = document.getElementById("proxyModeNote");
+  if (WORKER_ENDPOINT){
+    if (manualFields) manualFields.classList.add("hidden");
+    if (proxyNote) proxyNote.classList.remove("hidden");
+    return;
+  } else {
+    if (manualFields) manualFields.classList.remove("hidden");
+    if (proxyNote) proxyNote.classList.add("hidden");
+  }
   const provider = localStorage.getItem("tapuai_provider") || "anthropic";
   const key = localStorage.getItem("tapuai_key") || "";
   const baseUrl = localStorage.getItem("tapuai_baseurl") || "https://api.openai.com/v1";
@@ -320,7 +356,7 @@ async function callAnthropic(messages, key, useSearch){
     messages: messages.map(m=>({role: m.role, content: m.content})),
   };
   if (useSearch){
-    body.tools = [{ type: "web_search_20250305", name: "web_search" }];
+    body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }];
   }
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -338,7 +374,42 @@ async function callAnthropic(messages, key, useSearch){
   }
   const data = await res.json();
   const textParts = (data.content || []).filter(b=>b.type === "text").map(b=>b.text);
-  return textParts.join("\n\n");
+  const sources = extractSources(data.content || []);
+  return { text: textParts.join("\n\n"), sources };
+}
+
+function extractSources(blocks){
+  const seen = new Map();
+  for (const block of blocks){
+    if (block.type === "text" && Array.isArray(block.citations)){
+      for (const c of block.citations){
+        if (c.url && !seen.has(c.url)) seen.set(c.url, { title: c.title || c.url, url: c.url });
+      }
+    }
+    if (block.type === "web_search_tool_result" && Array.isArray(block.content)){
+      for (const r of block.content){
+        if (r.url && !seen.has(r.url)) seen.set(r.url, { title: r.title || r.url, url: r.url });
+      }
+    }
+  }
+  return Array.from(seen.values()).slice(0, 6);
+}
+
+async function callViaWorker(messages, useSearch){
+  const res = await fetch(WORKER_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: messages.map(m=>({role: m.role, content: m.content})),
+      system: systemPrompt(),
+      useSearch
+    })
+  });
+  const data = await res.json();
+  if (!res.ok){
+    throw new Error(data.error || `(${res.status}) request failed`);
+  }
+  return { text: data.reply || "", sources: data.sources || [] };
 }
 
 async function callOpenAICompatible(messages, key, baseUrl, model){
@@ -359,7 +430,7 @@ async function callOpenAICompatible(messages, key, baseUrl, model){
     throw new Error(`(${res.status}) ${errText.slice(0,300)}`);
   }
   const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
+  return { text: data.choices?.[0]?.message?.content || "", sources: [] };
 }
 
 // ---------------- Send flow ----------------
@@ -370,7 +441,8 @@ async function handleSend(e){
   if (!text) return;
 
   const settings = currentSettings();
-  if (!settings.key){
+  const usingWorker = !!WORKER_ENDPOINT;
+  if (!usingWorker && !settings.key){
     els.settingsOverlay.classList.add("open");
     return;
   }
@@ -396,13 +468,18 @@ async function handleSend(e){
   els.chatArea.scrollTop = els.chatArea.scrollHeight;
 
   try{
-    let replyText;
-    if (settings.provider === "anthropic"){
-      replyText = await callAnthropic(conv.messages, settings.key, webSearchOn);
+    let result;
+    let usedSearch = false;
+    if (usingWorker){
+      result = await callViaWorker(conv.messages, webSearchOn);
+      usedSearch = webSearchOn;
+    } else if (settings.provider === "anthropic"){
+      result = await callAnthropic(conv.messages, settings.key, webSearchOn);
+      usedSearch = webSearchOn;
     } else {
-      replyText = await callOpenAICompatible(conv.messages, settings.key, settings.baseUrl, settings.model);
+      result = await callOpenAICompatible(conv.messages, settings.key, settings.baseUrl, settings.model);
     }
-    conv.messages.push({ role: "assistant", content: replyText || "…", usedSearch: webSearchOn && settings.provider === "anthropic" });
+    conv.messages.push({ role: "assistant", content: result.text || "…", usedSearch, sources: result.sources || [] });
   } catch(err){
     conv.messages.push({ role: "assistant", content: `${t("errorPrefix")}: ${err.message}`, error: true });
   }
@@ -471,6 +548,7 @@ els.saveSettings.addEventListener("click", ()=>{
 
 // ---------------- Init ----------------
 function init(){
+  els.webSearchToggle.setAttribute("aria-pressed", String(webSearchOn));
   document.querySelectorAll(".lang-btn").forEach(b=>{
     const active = b.dataset.lang === lang;
     b.classList.toggle("active", active);
