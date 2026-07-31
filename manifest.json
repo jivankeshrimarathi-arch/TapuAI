@@ -1,0 +1,17 @@
+{
+  "name": "TapuAI — by Prasad Technology",
+  "short_name": "TapuAI",
+  "description": "मराठी, हिंदी आणि English बोलणारा त्रिभाषिक AI chatbot — By Prasad Technology Pvt Ltd",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14162B",
+  "theme_color": "#14162B",
+  "lang": "mr",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
